@@ -1,0 +1,45 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - simple-go-app-k8s-operator.jonasbe.de
+  resources:
+  - deployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - simple-go-app-k8s-operator.jonasbe.de
+  resources:
+  - simplegoappdeployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - simple-go-app-k8s-operator.jonasbe.de
+  resources:
+  - simplegoappdeployments/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - simple-go-app-k8s-operator.jonasbe.de
+  resources:
+  - simplegoappdeployments/status
+  verbs:
+  - get
+  - patch
+  - update
