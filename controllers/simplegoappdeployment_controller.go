@@ -71,11 +71,16 @@ func (r *SimpleGoAppDeploymentReconciler) Reconcile(ctx context.Context, req ctr
 	if err := r.creatOrUpdateBackendDeployment(ctx, simpleGoAppDeployment, logger); err != nil {
 		return ctrl.Result{}, err
 	}
-
+	if err := r.createOrUpdateBackendService(ctx, simpleGoAppDeployment, logger); err != nil {
+		return ctrl.Result{}, err
+	}
 	return ctrl.Result{}, nil
 }
 
 func (r *SimpleGoAppDeploymentReconciler) reconcileDelete(ctx context.Context, req ctrl.Request) error {
+	if err := r.deleteBackendService(ctx, req.Namespace); err != nil {
+		return err
+	}
 	if err := r.deleteBackendDeployment(ctx, req.Namespace); err != nil {
 		return err
 	}
@@ -99,6 +104,29 @@ func (r *SimpleGoAppDeploymentReconciler) deleteBackendDeployment(ctx context.Co
 	}
 
 	err := r.Delete(ctx, deployment)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r SimpleGoAppDeploymentReconciler) deleteBackendService(ctx context.Context, namespace string) error {
+	key := client.ObjectKey{Namespace: namespace, Name: "simple-go-app-backend"}
+	service := &v1.Service{}
+
+	if err := r.Get(ctx, key, service); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	controllerutil.RemoveFinalizer(service, simplegoappk8soperatorv1.SimpleGoAppFinalizer+"/backend-service")
+	if err := r.Update(ctx, service); err != nil {
+		return err
+	}
+
+	err := r.Delete(ctx, service)
 	if err != nil {
 		return err
 	}
@@ -150,6 +178,33 @@ func (r *SimpleGoAppDeploymentReconciler) creatOrUpdateBackendDeployment(ctx con
 							},
 						},
 					},
+				},
+			},
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r SimpleGoAppDeploymentReconciler) createOrUpdateBackendService(ctx context.Context, simpleGoAppDeployment *simplegoappk8soperatorv1.SimpleGoAppDeployment, logger logr.Logger) error {
+	service := &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "simple-go-app-backend",
+			Namespace: simpleGoAppDeployment.Namespace,
+		},
+	}
+
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, service, func() error {
+		controllerutil.AddFinalizer(service, simplegoappk8soperatorv1.SimpleGoAppFinalizer+"/backend-service")
+		service.Spec = v1.ServiceSpec{
+			Selector: map[string]string{
+				"app": "simple-go-app-backend",
+			},
+			Ports: []v1.ServicePort{
+				{
+					Port: 50051,
 				},
 			},
 		}
