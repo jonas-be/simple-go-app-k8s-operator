@@ -76,10 +76,16 @@ func (r *SimpleGoAppDeploymentReconciler) Reconcile(ctx context.Context, req ctr
 	if err := r.createOrUpdateFrontendDeployment(ctx, simpleGoAppDeployment); err != nil {
 		return ctrl.Result{}, err
 	}
+	if err := r.createOrUpdateFrontendService(ctx, simpleGoAppDeployment); err != nil {
+		return ctrl.Result{}, err
+	}
 	return ctrl.Result{}, nil
 }
 
 func (r *SimpleGoAppDeploymentReconciler) reconcileDelete(ctx context.Context, req ctrl.Request) error {
+	if err := r.deleteFrontendService(ctx, req.Namespace); err != nil {
+		return err
+	}
 	if err := r.deleteForntendDeployment(ctx, req.Namespace); err != nil {
 		return err
 	}
@@ -155,6 +161,29 @@ func (r SimpleGoAppDeploymentReconciler) deleteForntendDeployment(ctx context.Co
 	}
 
 	err := r.Delete(ctx, deployment)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r SimpleGoAppDeploymentReconciler) deleteFrontendService(ctx context.Context, namespace string) error {
+	key := client.ObjectKey{Namespace: namespace, Name: "simple-go-app-frontend"}
+	service := &v1.Service{}
+
+	if err := r.Get(ctx, key, service); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	controllerutil.RemoveFinalizer(service, simplegoappk8soperatorv1.SimpleGoAppFinalizer+"/frontend-service")
+	if err := r.Update(ctx, service); err != nil {
+		return err
+	}
+
+	err := r.Delete(ctx, service)
 	if err != nil {
 		return err
 	}
@@ -287,6 +316,36 @@ func (r SimpleGoAppDeploymentReconciler) createOrUpdateFrontendDeployment(ctx co
 		return err
 	}
 	return nil
+}
+
+func (r SimpleGoAppDeploymentReconciler) createOrUpdateFrontendService(ctx context.Context, simpleGoAppDeployment *simplegoappk8soperatorv1.SimpleGoAppDeployment) error {
+	service := &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "simple-go-app-frontend",
+			Namespace: simpleGoAppDeployment.Namespace,
+		},
+	}
+
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, service, func() error {
+		controllerutil.AddFinalizer(service, simplegoappk8soperatorv1.SimpleGoAppFinalizer+"/frontend-service")
+		service.Spec = v1.ServiceSpec{
+			Selector: map[string]string{
+				"app": "simple-go-app-frontend",
+			},
+			Type: "NodePort",
+			Ports: []v1.ServicePort{
+				{
+					Port:     8080,
+					NodePort: 30008,
+				},
+			},
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
+
 }
 
 // SetupWithManager sets up the controller with the Manager.
