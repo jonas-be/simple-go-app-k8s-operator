@@ -42,7 +42,6 @@ type SimpleGoAppDeploymentReconciler struct {
 //+kubebuilder:rbac:groups=simple-go-app-k8s-operator.jonasbe.de,resources=simplegoappdeployments,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=simple-go-app-k8s-operator.jonasbe.de,resources=simplegoappdeployments/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=simple-go-app-k8s-operator.jonasbe.de,resources=simplegoappdeployments/finalizers,verbs=update
-//+kubebuilder:rbac:groups=simple-go-app-k8s-operator.jonasbe.de,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -62,6 +61,10 @@ func (r *SimpleGoAppDeploymentReconciler) Reconcile(ctx context.Context, req ctr
 			return ctrl.Result{}, err
 		}
 		logger.Info("SimpleGoAppDeployment was deleted")
+		if err := r.reconcileDelete(ctx, req); err != nil {
+			return ctrl.Result{}, err
+		}
+
 		return ctrl.Result{}, nil
 	}
 
@@ -70,6 +73,36 @@ func (r *SimpleGoAppDeploymentReconciler) Reconcile(ctx context.Context, req ctr
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *SimpleGoAppDeploymentReconciler) reconcileDelete(ctx context.Context, req ctrl.Request) error {
+	if err := r.deleteBackendDeployment(ctx, req.Namespace); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *SimpleGoAppDeploymentReconciler) deleteBackendDeployment(ctx context.Context, namespace string) error {
+	key := client.ObjectKey{Namespace: namespace, Name: "simple-go-app-backend"}
+	deployment := &appsv1.Deployment{}
+
+	if err := r.Get(ctx, key, deployment); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	controllerutil.RemoveFinalizer(deployment, simplegoappk8soperatorv1.SimpleGoAppFinalizer+"/backend")
+	if err := r.Update(ctx, deployment); err != nil {
+		return err
+	}
+
+	err := r.Delete(ctx, deployment)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *SimpleGoAppDeploymentReconciler) creatOrUpdateBackendDeployment(ctx context.Context,
@@ -84,7 +117,11 @@ func (r *SimpleGoAppDeploymentReconciler) creatOrUpdateBackendDeployment(ctx con
 			Name:      "simple-go-app-backend",
 			Namespace: simpleGoAppDeployment.Namespace,
 		},
-		Spec: appsv1.DeploymentSpec{
+	}
+
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, deployment, func() error {
+		controllerutil.AddFinalizer(deployment, simplegoappk8soperatorv1.SimpleGoAppFinalizer+"/backend")
+		deployment.Spec = appsv1.DeploymentSpec{
 			Replicas: &repl,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -115,13 +152,7 @@ func (r *SimpleGoAppDeploymentReconciler) creatOrUpdateBackendDeployment(ctx con
 					},
 				},
 			},
-		},
-	}
-
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, deployment, func() error {
-		controllerutil.AddFinalizer(deployment, simplegoappk8soperatorv1.SimpleGoAppFinalizer+"/backend")
-		deployment.Spec.Replicas = &repl
-		deployment.Spec.Template.Spec.Containers[0].Env[0].Value = simpleGoAppDeployment.Spec.ReturnValue
+		}
 		return nil
 	}); err != nil {
 		return err

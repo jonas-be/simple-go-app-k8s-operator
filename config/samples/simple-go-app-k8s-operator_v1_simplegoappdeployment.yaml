@@ -9,6 +9,6 @@ metadata:
     app.kubernetes.io/created-by: simple-go-app-k8s-operator
   name: simplegoappdeployment-sample
 spec:
-  replicas: 2
+  replicas: 4
   serverPort: 8080
   returnValue: ABC

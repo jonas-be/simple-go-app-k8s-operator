@@ -8,18 +8,6 @@ rules:
 - apiGroups:
   - simple-go-app-k8s-operator.jonasbe.de
   resources:
-  - deployments
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - simple-go-app-k8s-operator.jonasbe.de
-  resources:
   - simplegoappdeployments
   verbs:
   - create
