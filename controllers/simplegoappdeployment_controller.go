@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -68,16 +67,22 @@ func (r *SimpleGoAppDeploymentReconciler) Reconcile(ctx context.Context, req ctr
 		return ctrl.Result{}, nil
 	}
 
-	if err := r.creatOrUpdateBackendDeployment(ctx, simpleGoAppDeployment, logger); err != nil {
+	if err := r.creatOrUpdateBackendDeployment(ctx, simpleGoAppDeployment); err != nil {
 		return ctrl.Result{}, err
 	}
-	if err := r.createOrUpdateBackendService(ctx, simpleGoAppDeployment, logger); err != nil {
+	if err := r.createOrUpdateBackendService(ctx, simpleGoAppDeployment); err != nil {
+		return ctrl.Result{}, err
+	}
+	if err := r.createOrUpdateFrontendDeployment(ctx, simpleGoAppDeployment); err != nil {
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
 }
 
 func (r *SimpleGoAppDeploymentReconciler) reconcileDelete(ctx context.Context, req ctrl.Request) error {
+	if err := r.deleteForntendDeployment(ctx, req.Namespace); err != nil {
+		return err
+	}
 	if err := r.deleteBackendService(ctx, req.Namespace); err != nil {
 		return err
 	}
@@ -133,13 +138,33 @@ func (r SimpleGoAppDeploymentReconciler) deleteBackendService(ctx context.Contex
 	return nil
 }
 
+func (r SimpleGoAppDeploymentReconciler) deleteForntendDeployment(ctx context.Context, namespace string) error {
+	key := client.ObjectKey{Namespace: namespace, Name: "simple-go-app-frontend"}
+	deployment := &appsv1.Deployment{}
+
+	if err := r.Get(ctx, key, deployment); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	controllerutil.RemoveFinalizer(deployment, simplegoappk8soperatorv1.SimpleGoAppFinalizer+"/frontend")
+	if err := r.Update(ctx, deployment); err != nil {
+		return err
+	}
+
+	err := r.Delete(ctx, deployment)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *SimpleGoAppDeploymentReconciler) creatOrUpdateBackendDeployment(ctx context.Context,
-	simpleGoAppDeployment *simplegoappk8soperatorv1.SimpleGoAppDeployment,
-	logger logr.Logger) error {
+	simpleGoAppDeployment *simplegoappk8soperatorv1.SimpleGoAppDeployment) error {
 	repl := int32(simpleGoAppDeployment.Spec.Replicas)
 
-	logger.Info("Creating or updating backend deployment")
-	logger.Info("Replicas: ", "replicas", repl)
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "simple-go-app-backend",
@@ -188,7 +213,7 @@ func (r *SimpleGoAppDeploymentReconciler) creatOrUpdateBackendDeployment(ctx con
 	return nil
 }
 
-func (r SimpleGoAppDeploymentReconciler) createOrUpdateBackendService(ctx context.Context, simpleGoAppDeployment *simplegoappk8soperatorv1.SimpleGoAppDeployment, logger logr.Logger) error {
+func (r SimpleGoAppDeploymentReconciler) createOrUpdateBackendService(ctx context.Context, simpleGoAppDeployment *simplegoappk8soperatorv1.SimpleGoAppDeployment) error {
 	service := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "simple-go-app-backend",
@@ -205,6 +230,55 @@ func (r SimpleGoAppDeploymentReconciler) createOrUpdateBackendService(ctx contex
 			Ports: []v1.ServicePort{
 				{
 					Port: 50051,
+				},
+			},
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r SimpleGoAppDeploymentReconciler) createOrUpdateFrontendDeployment(ctx context.Context, simpleGoAppDeployment *simplegoappk8soperatorv1.SimpleGoAppDeployment) error {
+	repl := int32(1)
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "simple-go-app-frontend",
+			Namespace: simpleGoAppDeployment.Namespace,
+		},
+	}
+
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, deployment, func() error {
+		controllerutil.AddFinalizer(deployment, simplegoappk8soperatorv1.SimpleGoAppFinalizer+"/frontend")
+		deployment.Spec = appsv1.DeploymentSpec{
+			Replicas: &repl,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": "simple-go-app-frontend",
+				},
+			},
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": "simple-go-app-frontend",
+					},
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Name:  "simple-go-app-frontend",
+							Image: "jonasbe25/simple-go-app-web:latest",
+							Ports: []v1.ContainerPort{
+								{
+									ContainerPort: 8080,
+								},
+							},
+							Env: []v1.EnvVar{
+								{Name: "TARGET", Value: "simple-go-app-backend.simple-go-app.svc.cluster.local:50051"},
+							},
+						},
+					},
 				},
 			},
 		}
