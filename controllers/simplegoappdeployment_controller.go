@@ -21,6 +21,7 @@ import (
 	"fmt"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -389,8 +390,21 @@ func (r SimpleGoAppDeploymentReconciler) createOrUpdateFrontendService(ctx conte
 	}); err != nil {
 		return err
 	}
-	return nil
 
+	key := types.NamespacedName{
+		Namespace: simpleGoAppDeployment.Namespace,
+		Name:      simpleGoAppDeployment.Name + "-frontend",
+	}
+	err := r.Client.Get(ctx, key, service)
+	if err != nil {
+		return err
+	}
+
+	simpleGoAppDeployment.Status.NodePort = service.Spec.Ports[0].NodePort
+	if err := r.Client.Status().Update(ctx, simpleGoAppDeployment); err != nil {
+		return err
+	}
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
