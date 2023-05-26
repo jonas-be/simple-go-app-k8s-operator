@@ -28,10 +28,11 @@ type SimpleGoAppDeploymentSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of SimpleGoAppDeployment. Edit simplegoappdeployment_types.go to remove/update
-	ServerPort  int    `json:"serverPort,omitempty"`
-	Replicas    int    `json:"replicas,omitempty"`
-	ReturnValue string `json:"returnValue,omitempty"`
-	NodePort    int32  `json:"nodePort,omitempty"`
+	ServerPort     int    `json:"serverPort,omitempty"`
+	Replicas       int    `json:"replicas,omitempty"`
+	ReturnValue    string `json:"returnValue,omitempty"`
+	PodNameAsValue bool   `json:"podNameAsValue,omitempty"`
+	NodePort       int32  `json:"nodePort,omitempty"`
 }
 
 // SimpleGoAppDeploymentStatus defines the observed state of SimpleGoAppDeployment
