@@ -103,7 +103,7 @@ func (r *SimpleGoAppDeploymentReconciler) Reconcile(ctx context.Context, req ctr
 }
 
 func (r *SimpleGoAppDeploymentReconciler) reconcileDelete(ctx context.Context, name string, namespace string) error {
-	if err := r.deleteFrontendService(ctx, req.Namespace); err != nil {
+	if err := r.deleteFrontendService(ctx, name, namespace); err != nil {
 		return err
 	}
 	if err := r.deleteFrontendDeployment(ctx, name, namespace); err != nil {
@@ -187,8 +187,8 @@ func (r *SimpleGoAppDeploymentReconciler) deleteFrontendDeployment(ctx context.C
 	return nil
 }
 
-func (r SimpleGoAppDeploymentReconciler) deleteFrontendService(ctx context.Context, namespace string) error {
-	key := client.ObjectKey{Namespace: namespace, Name: simpleGoAppDeployment.Name + "-frontend"}
+func (r SimpleGoAppDeploymentReconciler) deleteFrontendService(ctx context.Context, name string, namespace string) error {
+	key := client.ObjectKey{Namespace: namespace, Name: name + "-frontend"}
 	service := &v1.Service{}
 
 	if err := r.Get(ctx, key, service); err != nil {
