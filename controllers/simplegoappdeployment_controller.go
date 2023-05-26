@@ -135,9 +135,10 @@ func (r *SimpleGoAppDeploymentReconciler) deleteBackendDeployment(ctx context.Co
 		return err
 	}
 
-	controllerutil.RemoveFinalizer(deployment, simplegoappk8soperatorv1.SimpleGoAppFinalizer+"/backend")
-	if err := r.Update(ctx, deployment); err != nil {
-		return err
+	if controllerutil.RemoveFinalizer(deployment, simplegoappk8soperatorv1.SimpleGoAppFinalizer+"/backend") {
+		if err := r.Update(ctx, deployment); err != nil {
+			return err
+		}
 	}
 
 	err := r.Delete(ctx, deployment)
@@ -158,9 +159,10 @@ func (r *SimpleGoAppDeploymentReconciler) deleteBackendService(ctx context.Conte
 		return err
 	}
 
-	controllerutil.RemoveFinalizer(service, simplegoappk8soperatorv1.SimpleGoAppFinalizer+"/backend-service")
-	if err := r.Update(ctx, service); err != nil {
-		return err
+	if controllerutil.RemoveFinalizer(service, simplegoappk8soperatorv1.SimpleGoAppFinalizer+"/backend-service") {
+		if err := r.Update(ctx, service); err != nil {
+			return err
+		}
 	}
 
 	err := r.Delete(ctx, service)
@@ -181,9 +183,10 @@ func (r *SimpleGoAppDeploymentReconciler) deleteFrontendDeployment(ctx context.C
 		return err
 	}
 
-	controllerutil.RemoveFinalizer(deployment, simplegoappk8soperatorv1.SimpleGoAppFinalizer+"/frontend")
-	if err := r.Update(ctx, deployment); err != nil {
-		return err
+	if controllerutil.RemoveFinalizer(deployment, simplegoappk8soperatorv1.SimpleGoAppFinalizer+"/frontend") {
+		if err := r.Update(ctx, deployment); err != nil {
+			return err
+		}
 	}
 
 	err := r.Delete(ctx, deployment)
@@ -204,9 +207,10 @@ func (r SimpleGoAppDeploymentReconciler) deleteFrontendService(ctx context.Conte
 		return err
 	}
 
-	controllerutil.RemoveFinalizer(service, simplegoappk8soperatorv1.SimpleGoAppFinalizer+"/frontend-service")
-	if err := r.Update(ctx, service); err != nil {
-		return err
+	if controllerutil.RemoveFinalizer(service, simplegoappk8soperatorv1.SimpleGoAppFinalizer+"/frontend-service") {
+		if err := r.Update(ctx, service); err != nil {
+			return err
+		}
 	}
 
 	err := r.Delete(ctx, service)
