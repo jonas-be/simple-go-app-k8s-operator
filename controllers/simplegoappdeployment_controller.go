@@ -389,8 +389,18 @@ func (r SimpleGoAppDeploymentReconciler) createOrUpdateFrontendService(ctx conte
 	}); err != nil {
 		return err
 	}
-	return nil
 
+	key := client.ObjectKeyFromObject(service)
+	err := r.Client.Get(ctx, key, service)
+	if err != nil {
+		return err
+	}
+
+	simpleGoAppDeployment.Status.NodePort = service.Spec.Ports[0].NodePort
+	if err := r.Client.Status().Update(ctx, simpleGoAppDeployment); err != nil {
+		return err
+	}
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
