@@ -233,6 +233,18 @@ func (r *SimpleGoAppDeploymentReconciler) creatOrUpdateBackendDeployment(ctx con
 
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, deployment, func() error {
 		controllerutil.AddFinalizer(deployment, simplegoappk8soperatorv1.SimpleGoAppFinalizer+"/backend")
+
+		value := v1.EnvVar{Name: "CONTENT"}
+		if simpleGoAppDeployment.Spec.PodNameAsValue {
+			value.ValueFrom = &v1.EnvVarSource{
+				FieldRef: &v1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
+				},
+			}
+		} else {
+			value.Value = simpleGoAppDeployment.Spec.ReturnValue
+		}
+
 		deployment.Spec = appsv1.DeploymentSpec{
 			Replicas: &repl,
 			Selector: &metav1.LabelSelector{
@@ -257,9 +269,7 @@ func (r *SimpleGoAppDeploymentReconciler) creatOrUpdateBackendDeployment(ctx con
 									Protocol:      v1.ProtocolTCP,
 								},
 							},
-							Env: []v1.EnvVar{
-								{Name: "CONTENT", Value: simpleGoAppDeployment.Spec.ReturnValue},
-							},
+							Env: []v1.EnvVar{value},
 						},
 					},
 				},

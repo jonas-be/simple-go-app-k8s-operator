@@ -39,6 +39,8 @@ spec:
               nodePort:
                 format: int32
                 type: integer
+              podNameAsValue:
+                type: boolean
               replicas:
                 type: integer
               returnValue:
