@@ -21,7 +21,6 @@ import (
 	"fmt"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -391,10 +390,7 @@ func (r SimpleGoAppDeploymentReconciler) createOrUpdateFrontendService(ctx conte
 		return err
 	}
 
-	key := types.NamespacedName{
-		Namespace: simpleGoAppDeployment.Namespace,
-		Name:      simpleGoAppDeployment.Name + "-frontend",
-	}
+	key := client.ObjectKeyFromObject(service)
 	err := r.Client.Get(ctx, key, service)
 	if err != nil {
 		return err

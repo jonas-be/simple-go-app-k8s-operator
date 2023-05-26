@@ -24,10 +24,6 @@ const (
 
 // SimpleGoAppDeploymentSpec defines the desired state of SimpleGoAppDeployment
 type SimpleGoAppDeploymentSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of SimpleGoAppDeployment. Edit simplegoappdeployment_types.go to remove/update
 	ServerPort     int    `json:"serverPort,omitempty"`
 	Replicas       int    `json:"replicas,omitempty"`
 	ReturnValue    string `json:"returnValue,omitempty"`
@@ -37,8 +33,6 @@ type SimpleGoAppDeploymentSpec struct {
 
 // SimpleGoAppDeploymentStatus defines the observed state of SimpleGoAppDeployment
 type SimpleGoAppDeploymentStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 	NodePort int32 `json:"nodePort,omitempty"`
 }
 

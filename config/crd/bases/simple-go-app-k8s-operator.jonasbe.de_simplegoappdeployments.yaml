@@ -46,8 +46,6 @@ spec:
               returnValue:
                 type: string
               serverPort:
-                description: Foo is an example field of SimpleGoAppDeployment. Edit
-                  simplegoappdeployment_types.go to remove/update
                 type: integer
             type: object
           status:
@@ -55,9 +53,6 @@ spec:
               SimpleGoAppDeployment
             properties:
               nodePort:
-                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
-                  of cluster Important: Run "make" to regenerate code after modifying
-                  this file'
                 format: int32
                 type: integer
             type: object
