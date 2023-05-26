@@ -64,60 +64,62 @@ func (r *SimpleGoAppDeploymentReconciler) Reconcile(ctx context.Context, req ctr
 		if !apierrors.IsNotFound(err) {
 			return ctrl.Result{}, err
 		}
-		logger.Info("SimpleGoAppDeployment was deleted")
-
 		return ctrl.Result{}, nil
 	}
 
 	if !simpleGoAppDeployment.DeletionTimestamp.IsZero() {
-		if err := r.reconcileDelete(ctx, req.Name, req.Namespace); err != nil {
+		if err := r.reconcileDelete(ctx, simpleGoAppDeployment); err != nil {
 			return ctrl.Result{}, err
 		}
-		if controllerutil.RemoveFinalizer(simpleGoAppDeployment, simplegoappk8soperatorv1.SimpleGoAppFinalizer) {
-			if err := r.Update(ctx, simpleGoAppDeployment); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
+
 		return ctrl.Result{}, nil
 	}
 
-	if controllerutil.AddFinalizer(simpleGoAppDeployment, simplegoappk8soperatorv1.SimpleGoAppFinalizer) {
-		if err := r.Update(ctx, simpleGoAppDeployment); err != nil {
-			return ctrl.Result{}, err
-		}
-	}
-
-	if err := r.creatOrUpdateBackendDeployment(ctx, simpleGoAppDeployment); err != nil {
-		return ctrl.Result{}, err
-	}
-	if err := r.createOrUpdateBackendService(ctx, simpleGoAppDeployment); err != nil {
-		return ctrl.Result{}, err
-	}
-	if err := r.createOrUpdateFrontendDeployment(ctx, simpleGoAppDeployment); err != nil {
+	if err := r.reconcileEnsure(ctx, simpleGoAppDeployment); err != nil {
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
 }
 
-func (r *SimpleGoAppDeploymentReconciler) reconcileDelete(ctx context.Context, name string, namespace string) error {
-	logger := log.FromContext(ctx)
-	logger.Info("Reconciling delete")
-	logger.Info("Using: " + name + "NNN" + namespace)
-	if err := r.deleteFrontendDeployment(ctx, name, namespace); err != nil {
-		return err
-	}
-	if err := r.deleteBackendService(ctx, name, namespace); err != nil {
-		return err
-	}
-	if err := r.deleteBackendDeployment(ctx, name, namespace); err != nil {
-		return err
+func (r *SimpleGoAppDeploymentReconciler) reconcileEnsure(ctx context.Context, simpleGoAppDeployment *simplegoappk8soperatorv1.SimpleGoAppDeployment) error {
+	if controllerutil.AddFinalizer(simpleGoAppDeployment, simplegoappk8soperatorv1.SimpleGoAppFinalizer) {
+		if err := r.Update(ctx, simpleGoAppDeployment); err != nil {
+			return err
+		}
 	}
 
+	if err := r.creatOrUpdateBackendDeployment(ctx, simpleGoAppDeployment); err != nil {
+		return err
+	}
+	if err := r.createOrUpdateBackendService(ctx, simpleGoAppDeployment); err != nil {
+		return err
+	}
+	if err := r.createOrUpdateFrontendDeployment(ctx, simpleGoAppDeployment); err != nil {
+		return err
+	}
 	return nil
 }
 
-func (r *SimpleGoAppDeploymentReconciler) deleteBackendDeployment(ctx context.Context, name string, namespace string) error {
-	key := client.ObjectKey{Namespace: namespace, Name: name + "-backend"}
+func (r *SimpleGoAppDeploymentReconciler) reconcileDelete(ctx context.Context, simpleGoAppDeployment *simplegoappk8soperatorv1.SimpleGoAppDeployment) error {
+	if err := r.deleteFrontendDeployment(ctx, simpleGoAppDeployment); err != nil {
+		return err
+	}
+	if err := r.deleteBackendService(ctx, simpleGoAppDeployment); err != nil {
+		return err
+	}
+	if err := r.deleteBackendDeployment(ctx, simpleGoAppDeployment); err != nil {
+		return err
+	}
+	if controllerutil.RemoveFinalizer(simpleGoAppDeployment, simplegoappk8soperatorv1.SimpleGoAppFinalizer) {
+		if err := r.Update(ctx, simpleGoAppDeployment); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *SimpleGoAppDeploymentReconciler) deleteBackendDeployment(ctx context.Context, simpleGoAppDeployment *simplegoappk8soperatorv1.SimpleGoAppDeployment) error {
+	key := client.ObjectKey{Namespace: simpleGoAppDeployment.Namespace, Name: simpleGoAppDeployment.Name + "-backend"}
 	deployment := &appsv1.Deployment{}
 
 	if err := r.Get(ctx, key, deployment); err != nil {
@@ -139,8 +141,8 @@ func (r *SimpleGoAppDeploymentReconciler) deleteBackendDeployment(ctx context.Co
 	return nil
 }
 
-func (r *SimpleGoAppDeploymentReconciler) deleteBackendService(ctx context.Context, name string, namespace string) error {
-	key := client.ObjectKey{Namespace: namespace, Name: name + "-backend"}
+func (r *SimpleGoAppDeploymentReconciler) deleteBackendService(ctx context.Context, simpleGoAppDeployment *simplegoappk8soperatorv1.SimpleGoAppDeployment) error {
+	key := client.ObjectKey{Namespace: simpleGoAppDeployment.Namespace, Name: simpleGoAppDeployment.Name + "-backend"}
 	service := &v1.Service{}
 
 	if err := r.Get(ctx, key, service); err != nil {
@@ -162,8 +164,8 @@ func (r *SimpleGoAppDeploymentReconciler) deleteBackendService(ctx context.Conte
 	return nil
 }
 
-func (r *SimpleGoAppDeploymentReconciler) deleteFrontendDeployment(ctx context.Context, name string, namespace string) error {
-	key := client.ObjectKey{Namespace: namespace, Name: name + "-frontend"}
+func (r *SimpleGoAppDeploymentReconciler) deleteFrontendDeployment(ctx context.Context, simpleGoAppDeployment *simplegoappk8soperatorv1.SimpleGoAppDeployment) error {
+	key := client.ObjectKey{Namespace: simpleGoAppDeployment.Namespace, Name: simpleGoAppDeployment.Name + "-frontend"}
 	deployment := &appsv1.Deployment{}
 
 	if err := r.Get(ctx, key, deployment); err != nil {
@@ -214,7 +216,7 @@ func (r *SimpleGoAppDeploymentReconciler) creatOrUpdateBackendDeployment(ctx con
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
 						{
-							Name:  simpleGoAppDeployment.Name + "-backend",
+							Name:  "simple-go-app-backend",
 							Image: "jonasbe25/simple-go-app-backend:latest",
 							Ports: []v1.ContainerPort{
 								{
@@ -291,7 +293,7 @@ func (r *SimpleGoAppDeploymentReconciler) createOrUpdateFrontendDeployment(ctx c
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
 						{
-							Name:  simpleGoAppDeployment.Name + "-frontend",
+							Name:  "simple-go-app-frontend",
 							Image: "jonasbe25/simple-go-app-web:latest",
 							Ports: []v1.ContainerPort{
 								{
