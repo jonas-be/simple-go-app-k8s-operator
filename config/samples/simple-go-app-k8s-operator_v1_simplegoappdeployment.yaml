@@ -1,0 +1,14 @@
+apiVersion: simple-go-app-k8s-operator.jonasbe.de/v1
+kind: SimpleGoAppDeployment
+metadata:
+  labels:
+    app.kubernetes.io/name: simplegoappdeployment
+    app.kubernetes.io/instance: simplegoappdeployment-sample
+    app.kubernetes.io/part-of: simple-go-app-k8s-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: simple-go-app-k8s-operator
+  name: simplegoappdeployment-sample
+spec:
+  replicas: 4
+  serverPort: 8080
+  returnValue: ABC
