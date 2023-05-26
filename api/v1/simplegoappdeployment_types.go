@@ -31,6 +31,7 @@ type SimpleGoAppDeploymentSpec struct {
 	ServerPort  int    `json:"serverPort,omitempty"`
 	Replicas    int    `json:"replicas,omitempty"`
 	ReturnValue string `json:"returnValue,omitempty"`
+	NodePort    int32  `json:"nodePort,omitempty"`
 }
 
 // SimpleGoAppDeploymentStatus defines the observed state of SimpleGoAppDeployment

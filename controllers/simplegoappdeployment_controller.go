@@ -367,7 +367,7 @@ func (r SimpleGoAppDeploymentReconciler) createOrUpdateFrontendService(ctx conte
 			Ports: []v1.ServicePort{
 				{
 					Port:     8080,
-					NodePort: 30008,
+					NodePort: simpleGoAppDeployment.Spec.NodePort,
 				},
 			},
 		}

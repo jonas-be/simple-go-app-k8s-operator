@@ -36,6 +36,9 @@ spec:
           spec:
             description: SimpleGoAppDeploymentSpec defines the desired state of SimpleGoAppDeployment
             properties:
+              nodePort:
+                format: int32
+                type: integer
               replicas:
                 type: integer
               returnValue:
